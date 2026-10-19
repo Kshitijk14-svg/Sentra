@@ -22,3 +22,6 @@ frontend/.vite/
 # OS
 .DS_Store
 Thumbs.db
+
+# Playwright screenshots and logs
+.playwright-mcp/

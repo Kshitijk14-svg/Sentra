@@ -105,6 +105,6 @@ completes so any future session can resume from here without re-deriving context
 - [x] Exit check: all pass
 
 ### Day 14 — Frontend + demo prep
-- [ ] Login → Dashboard (list + inline create) → Check detail (runs + incidents)
+- [x] Login → Dashboard (list + inline create) → Check detail (runs + incidents)
 - [ ] Fallback if behind schedule: demo via REST client against raw JSON
 - [ ] Rehearse: show accumulated history, break a check live, incident+alert fire, SSRF rejection

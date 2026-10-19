@@ -23,6 +23,14 @@ Java 21 · Spring Boot 4.1 · PostgreSQL 16 · React + Vite
    The `dev` profile supplies a throwaway JWT secret. Without it the app refuses to start unless
    `JWT_SECRET` is set (at least 32 bytes).
 3. Check it's alive: `curl http://localhost:8080/api/v1/ping` → `{"status":"ok"}`
+4. Run the web UI (needs Node 18+; Vite forwards `/api` to the backend on 8080, so no CORS setup):
+   ```
+   cd frontend
+   npm install
+   npm run dev
+   ```
+   Open http://localhost:5173, create an account, and add a check. To monitor `localhost` targets or
+   receive webhooks on your own machine, start the backend with `SSRF_ALLOW_PRIVATE=true`.
 
 ## Environment variables
 
