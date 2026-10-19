@@ -25,6 +25,9 @@ management:
       show-details: always
 
 sentra:
+  ssrf:
+    # Only for local demos against localhost; must stay false anywhere reachable from the internet.
+    allow-private: ${SSRF_ALLOW_PRIVATE:false}
   scheduler:
     tick-ms: ${SCHEDULER_TICK_MS:5000}
     batch-size: ${SCHEDULER_BATCH_SIZE:50}

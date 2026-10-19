@@ -1,6 +1,8 @@
 package in.sentra.probe;
 
 import in.sentra.check.Check;
+import in.sentra.security.SsrfException;
+import in.sentra.security.SsrfGuard;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
@@ -15,6 +17,11 @@ public class HttpProbe implements Probe {
     private final HttpClient client = HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.NEVER)
             .build();
+    private final SsrfGuard ssrfGuard;
+
+    public HttpProbe(SsrfGuard ssrfGuard) {
+        this.ssrfGuard = ssrfGuard;
+    }
 
     @Override
     public CheckType supports() {
@@ -25,6 +32,8 @@ public class HttpProbe implements Probe {
     public ProbeResult execute(Check check) {
         long start = System.nanoTime();
         try {
+            // DNS may have changed since creation, so re-validate right before connecting.
+            ssrfGuard.validate(check.getTarget());
             HttpRequest request = HttpRequest.newBuilder(URI.create(check.getTarget()))
                     .timeout(Duration.ofMillis(check.getTimeoutMs()))
                     .GET()
@@ -34,6 +43,8 @@ public class HttpProbe implements Probe {
             int status = response.statusCode();
             boolean ok = status == check.getExpectedStatus();
             return new ProbeResult(ok, status, latency, ok ? null : "Unexpected status " + status);
+        } catch (SsrfException e) {
+            return new ProbeResult(false, null, elapsedMs(start), "Target not allowed: " + e.getMessage());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return new ProbeResult(false, null, elapsedMs(start), "Interrupted");

@@ -1,7 +1,9 @@
 package in.sentra.incident;
 
 import in.sentra.check.CheckRepository;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -23,15 +25,14 @@ public class IncidentController {
     }
 
     @GetMapping("/incidents")
-    public List<Incident> list() {
-        return incidents.findTop100ByOrderByOpenedAtDesc();
+    public List<Incident> list(@AuthenticationPrincipal Long userId) {
+        return incidents.findRecentForUser(userId, Pageable.ofSize(100));
     }
 
     @GetMapping("/checks/{id}/incidents")
-    public List<Incident> forCheck(@PathVariable Long id) {
-        if (!checks.existsById(id)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Check not found");
-        }
+    public List<Incident> forCheck(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
+        checks.findByIdForUser(id, userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Check not found"));
         return incidents.findByCheckIdOrderByOpenedAtDesc(id);
     }
 }

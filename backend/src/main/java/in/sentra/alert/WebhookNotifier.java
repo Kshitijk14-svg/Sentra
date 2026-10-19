@@ -1,5 +1,6 @@
 package in.sentra.alert;
 
+import in.sentra.security.SsrfGuard;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
@@ -18,9 +19,11 @@ public class WebhookNotifier implements Notifier {
             .followRedirects(HttpClient.Redirect.NEVER)
             .build();
     private final ObjectMapper mapper;
+    private final SsrfGuard ssrfGuard;
 
-    public WebhookNotifier(ObjectMapper mapper) {
+    public WebhookNotifier(ObjectMapper mapper, SsrfGuard ssrfGuard) {
         this.mapper = mapper;
+        this.ssrfGuard = ssrfGuard;
     }
 
     @Override
@@ -30,6 +33,7 @@ public class WebhookNotifier implements Notifier {
 
     @Override
     public void send(String destination, AlertMessage message) throws IOException, InterruptedException {
+        ssrfGuard.validate(destination); // re-check at send time; DNS can change after the rule was created
         HttpRequest request = HttpRequest.newBuilder(URI.create(destination))
                 .timeout(Duration.ofSeconds(10))
                 .header("Content-Type", "application/json")

@@ -1,11 +1,14 @@
 package in.sentra.check;
 
+import in.sentra.project.ProjectRepository;
+import in.sentra.security.SsrfGuard;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -28,17 +31,25 @@ public class CheckController {
     private final CheckRepository checks;
     private final CheckRunRepository runs;
     private final CheckService service;
+    private final ProjectRepository projects;
+    private final SsrfGuard ssrfGuard;
 
-    public CheckController(CheckRepository checks, CheckRunRepository runs, CheckService service) {
+    public CheckController(CheckRepository checks, CheckRunRepository runs, CheckService service,
+                           ProjectRepository projects, SsrfGuard ssrfGuard) {
         this.checks = checks;
         this.runs = runs;
         this.service = service;
+        this.projects = projects;
+        this.ssrfGuard = ssrfGuard;
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Check create(@Valid @RequestBody CreateCheckRequest req) {
+    public Check create(@AuthenticationPrincipal Long userId, @Valid @RequestBody CreateCheckRequest req) {
+        ssrfGuard.validate(req.target());
         Check check = new Check();
+        check.setProjectId(projects.findFirstByUserIdOrderByIdAsc(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "User has no project")).getId());
         check.setName(req.name());
         check.setTarget(req.target());
         if (req.expectedStatus() != null) check.setExpectedStatus(req.expectedStatus());
@@ -50,28 +61,28 @@ public class CheckController {
     }
 
     @GetMapping
-    public List<Check> list() {
-        return checks.findAll();
+    public List<Check> list(@AuthenticationPrincipal Long userId) {
+        return checks.findAllForUser(userId);
     }
 
     @GetMapping("/{id}")
-    public Check get(@PathVariable Long id) {
-        return find(id);
+    public Check get(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
+        return find(id, userId);
     }
 
     @PostMapping("/{id}/run")
-    public CheckRun run(@PathVariable Long id) {
-        return service.runNow(find(id));
+    public CheckRun run(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
+        return service.runNow(find(id, userId));
     }
 
     @GetMapping("/{id}/runs")
-    public List<CheckRun> history(@PathVariable Long id) {
-        find(id);
+    public List<CheckRun> history(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
+        find(id, userId);
         return runs.findTop50ByCheckIdOrderByStartedAtDesc(id);
     }
 
-    private Check find(Long id) {
-        return checks.findById(id)
+    private Check find(Long id, Long userId) {
+        return checks.findByIdForUser(id, userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Check not found"));
     }
 }

@@ -93,14 +93,16 @@ completes so any future session can resume from here without re-deriving context
       blocked by DB constraint
 
 ### Phase 5 — Auth + multi-tenancy + SSRF guard (days 11-13)
-- [ ] `V6__auth.sql` (password hash on `app_user`)
-- [ ] Register/login, BCrypt
-- [ ] jjwt issuing + validation filter
-- [ ] Two `SecurityFilterChain`s (`/api/**` protected, ingest paths public)
-- [ ] Retrofit every repo method to owner-scope
-- [ ] `SsrfGuard`, called at creation AND inside the probe
-- [ ] 2 security tests (cross-tenant 404, SSRF rejection of localhost/169.254.169.254/10.0.0.1)
-- [ ] Exit check: all pass
+- [x] `V6__auth.sql` (password hash was already in V1; V6 makes `checks.project_id` NOT NULL)
+- [x] Register/login, BCrypt
+- [x] jjwt issuing + validation filter
+- [x] Two `SecurityFilterChain`s (`/api/**` protected, ingest paths public)
+- [x] Retrofit every repo method to owner-scope
+- [x] `SsrfGuard`, called at creation AND inside the probe. Must also cover alert webhook URLs
+      (`AlertRuleController` + `WebhookNotifier`). Check ALL resolved addresses (incl. CGNAT
+      100.64/10, IPv6 fc00::/7) and connect only to the vetted IP to defeat DNS rebinding.
+- [x] 2 security tests (cross-tenant 404, SSRF rejection of localhost/169.254.169.254/10.0.0.1)
+- [x] Exit check: all pass
 
 ### Day 14 — Frontend + demo prep
 - [ ] Login → Dashboard (list + inline create) → Check detail (runs + incidents)
