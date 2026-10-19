@@ -1,25 +1,33 @@
 package in.sentra.check;
 
-import in.sentra.probe.HttpProbe;
+import in.sentra.probe.ProbeRegistry;
 import in.sentra.probe.ProbeResult;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.Instant;
 
 @Service
 public class CheckService {
 
     private final CheckRunRepository runs;
-    private final HttpProbe httpProbe;
+    private final ProbeRegistry probes;
+    private final Clock clock;
 
-    public CheckService(CheckRunRepository runs, HttpProbe httpProbe) {
+    public CheckService(CheckRunRepository runs, ProbeRegistry probes, Clock clock) {
         this.runs = runs;
-        this.httpProbe = httpProbe;
+        this.probes = probes;
+        this.clock = clock;
     }
 
     public CheckRun runNow(Check check) {
-        Instant startedAt = Instant.now();
-        ProbeResult result = httpProbe.run(check);
+        Instant startedAt = clock.instant();
+        ProbeResult result;
+        try {
+            result = probes.get(check.getType()).execute(check);
+        } catch (RuntimeException e) {
+            result = new ProbeResult(false, null, 0, e.getClass().getSimpleName() + ": " + e.getMessage());
+        }
         CheckRun run = new CheckRun();
         run.setCheckId(check.getId());
         run.setStartedAt(startedAt);

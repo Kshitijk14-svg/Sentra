@@ -10,13 +10,19 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 
 @Component
-public class HttpProbe {
+public class HttpProbe implements Probe {
 
     private final HttpClient client = HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.NEVER)
             .build();
 
-    public ProbeResult run(Check check) {
+    @Override
+    public CheckType supports() {
+        return CheckType.HTTP;
+    }
+
+    @Override
+    public ProbeResult execute(Check check) {
         long start = System.nanoTime();
         try {
             HttpRequest request = HttpRequest.newBuilder(URI.create(check.getTarget()))

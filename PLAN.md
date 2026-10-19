@@ -57,22 +57,22 @@ completes so any future session can resume from here without re-deriving context
 - [ ] Exit check: public `curl` returns 200; `/actuator/health` DB is `UP`
 
 ### Phase 1 — One HTTP check end-to-end (days 3-4)
-- [ ] `V2__checks.sql` (`checks`, `check_runs`)
-- [ ] `Check` entity, `CheckType` enum, JSONB `config`
-- [ ] DTOs (never expose entity), Bean Validation
-- [ ] `Probe` interface + `HttpProbe` (explicit connect/read timeouts)
-- [ ] `POST /checks`, `GET /checks`, `GET /checks/{id}`, `POST /checks/{id}/run`
+- [x] `V2__checks.sql` (`checks`, `check_runs`)
+- [x] `Check` entity, `CheckType` enum (JSONB `config` not done: flat columns for now)
+- [ ] DTOs (request DTO + validation done; responses still return the entity)
+- [x] `Probe` interface + `HttpProbe` (explicit connect/read timeouts)
+- [x] `POST /checks`, `GET /checks`, `GET /checks/{id}`, `POST /checks/{id}/run`
 - [ ] Global `@ControllerAdvice`
 - [ ] Exit check: create + manual run stores a `check_runs` row with latency; broken URL stores
       categorised failure not a stack trace
 
 ### Phase 2 — The engine (days 5-6)
-- [ ] `next_run_at`/`interval_seconds`/`enabled` + partial index
-- [ ] `@EnableScheduling` + `CheckScheduler` (claim-before-probe)
-- [ ] Bounded `ThreadPoolTaskExecutor`
-- [ ] `ProbeRegistry` (`Map<CheckType,Probe>` via injected `List<Probe>`)
-- [ ] `Clock` bean
-- [ ] Exit check: 60s check left alone 10 min → ~10 run rows unattended; hung check doesn't
+- [x] `next_run_at`/`interval_seconds`/`enabled` + partial index
+- [x] `@EnableScheduling` + `CheckScheduler` (claim-before-probe)
+- [x] Bounded `ThreadPoolTaskExecutor`
+- [x] `ProbeRegistry` (`Map<CheckType,Probe>` via injected `List<Probe>`)
+- [x] `Clock` bean
+- [x] Exit check: 60s check left alone 10 min → ~10 run rows unattended; hung check doesn't
       delay others
 
 ### Phase 3 — Incidents + hysteresis (days 7-8)

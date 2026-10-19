@@ -1,6 +1,7 @@
 package in.sentra.check;
 
 import jakarta.persistence.*;
+import in.sentra.probe.CheckType;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -22,7 +23,8 @@ public class Check {
     private Long projectId;
 
     private String name;
-    private String type = "HTTP";
+    @Enumerated(EnumType.STRING)
+    private CheckType type = CheckType.HTTP;
     private String target;
 
     @Column(name = "expected_status")
@@ -35,6 +37,9 @@ public class Check {
     private int intervalSeconds = 60;
 
     private boolean enabled = true;
+
+    @Column(name = "next_run_at")
+    private Instant nextRunAt = Instant.now();
 
     @Column(name = "created_at", insertable = false, updatable = false)
     private Instant createdAt;
