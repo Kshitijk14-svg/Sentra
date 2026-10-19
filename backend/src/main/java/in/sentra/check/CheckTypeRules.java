@@ -1,6 +1,7 @@
 package in.sentra.check;
 
 import in.sentra.probe.CheckType;
+import in.sentra.probe.TlsProbe;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
@@ -27,6 +28,7 @@ public class CheckTypeRules {
         switch (type) {
             case HTTP -> http(check, r);
             case TCP -> tcp(check, r);
+            case TLS -> tls(check, r);
         }
     }
 
@@ -42,10 +44,7 @@ public class CheckTypeRules {
     }
 
     private void tcp(Check check, CreateCheckRequest r) {
-        String host = r.host() == null ? "" : r.host().trim();
-        if (!HOST.matcher(host).matches()) {
-            throw new InvalidCheckException("host: must be a hostname or IP address");
-        }
+        String host = validHost(r);
         if (r.port() == null) {
             throw new InvalidCheckException("port: required for a TCP check");
         }
@@ -56,6 +55,28 @@ public class CheckTypeRules {
         check.setTarget("tcp://" + host + ":" + r.port());
         check.setSite(blankToNull(r.site()) != null ? r.site().trim() : host);
         common(check, r, 60, 5000, 3, 2);
+    }
+
+    private void tls(Check check, CreateCheckRequest r) {
+        String host = validHost(r);
+        int port = r.port() != null ? r.port() : 443;
+        Map<String, Object> config = new HashMap<>();
+        config.put("host", host);
+        config.put("port", port);
+        config.put("warnDays", r.warnDays() != null ? r.warnDays() : TlsProbe.DEFAULT_WARN_DAYS);
+        check.setConfig(config);
+        check.setTarget("tls://" + host + ":" + port);
+        check.setSite(blankToNull(r.site()) != null ? r.site().trim() : host);
+        // Certificates change over days, so a slower default cadence is enough.
+        common(check, r, 3600, 10000, 1, 1);
+    }
+
+    private static String validHost(CreateCheckRequest r) {
+        String host = r.host() == null ? "" : r.host().trim();
+        if (!HOST.matcher(host).matches()) {
+            throw new InvalidCheckException("host: must be a hostname or IP address");
+        }
+        return host;
     }
 
     /** Interval, timeout and thresholds shared by every type, each with its own default. */

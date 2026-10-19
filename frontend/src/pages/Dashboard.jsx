@@ -9,6 +9,8 @@ const INTERVALS = [
   { value: 30, label: '30 seconds' },
   { value: 60, label: '1 minute' },
   { value: 300, label: '5 minutes' },
+  { value: 3600, label: '1 hour' },
+  { value: 86400, label: '1 day' },
 ];
 
 function AddCheck({ onCreated, onCancel }) {
@@ -17,6 +19,7 @@ function AddCheck({ onCreated, onCancel }) {
   const [target, setTarget] = useState('');
   const [host, setHost] = useState('');
   const [port, setPort] = useState('');
+  const [warnDays, setWarnDays] = useState('14');
   const [site, setSite] = useState('');
   const [intervalSeconds, setIntervalSeconds] = useState(60);
   const [error, setError] = useState(null);
@@ -30,6 +33,10 @@ function AddCheck({ onCreated, onCancel }) {
       const body = { type, name, intervalSeconds: Number(intervalSeconds) };
       if (site.trim()) body.site = site.trim();
       if (type === 'TCP') Object.assign(body, { host, port: Number(port) });
+      else if (type === 'TLS') {
+        Object.assign(body, { host, warnDays: Number(warnDays) });
+        if (port) body.port = Number(port);
+      }
       else body.target = target;
       await api.createCheck(body);
       setName('');
@@ -56,9 +63,27 @@ function AddCheck({ onCreated, onCancel }) {
         <select value={type} onChange={(e) => setType(e.target.value)}>
           <option value="HTTP">Website (HTTP)</option>
           <option value="TCP">Port (TCP)</option>
+          <option value="TLS">Certificate (TLS)</option>
         </select>
       </label>
-      {type === 'TCP' ? (
+      {type === 'TLS' ? (
+        <>
+          <label className="field field-wide">
+            <span>Host</span>
+            <input required value={host} onChange={(e) => setHost(e.target.value)} placeholder="example.com" />
+          </label>
+          <label className="field">
+            <span>Port (default 443)</span>
+            <input type="number" min="1" max="65535" value={port}
+              onChange={(e) => setPort(e.target.value)} placeholder="443" />
+          </label>
+          <label className="field">
+            <span>Warn before expiry (days)</span>
+            <input required type="number" min="1" max="365" value={warnDays}
+              onChange={(e) => setWarnDays(e.target.value)} />
+          </label>
+        </>
+      ) : type === 'TCP' ? (
         <>
           <label className="field field-wide">
             <span>Host</span>

@@ -101,8 +101,32 @@ public class SsrfGuard {
                 || first >= 240;                                   // reserved 240.0.0.0/4 + broadcast
     }
 
+    private static boolean isNat64(byte[] b) {
+        if (b[0] != 0 || b[1] != 0x64 || (b[2] & 0xFF) != 0xFF || (b[3] & 0xFF) != 0x9B) {
+            return false;
+        }
+        for (int i = 4; i < 12; i++) {
+            if (b[i] != 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean embeddedV4IsInternal(byte... v4) {
+        try {
+            return isInternal(InetAddress.getByAddress(v4));
+        } catch (UnknownHostException e) {
+            return true;
+        }
+    }
+
     /** Allow-list approach: only global unicast 2000::/3 can pass, minus ranges that embed or tunnel IPv4. */
     private static boolean isInternalV6(byte[] b) {
+        if (isNat64(b)) {
+            // NAT64 64:ff9b::/96 (IPv6-only networks): the last four bytes are the real IPv4 target.
+            return embeddedV4IsInternal(b[12], b[13], b[14], b[15]);
+        }
         if ((b[0] & 0xE0) != 0x20) {
             return true; // not global unicast: covers ::, ::1, fc00::/7, fe80::/10, ff00::/8, NAT64 64:ff9b::/96, ...
         }
@@ -111,11 +135,7 @@ public class SsrfGuard {
         }
         if (b[0] == 0x20 && b[1] == 0x02) {
             // 6to4 2002::/16: the next four bytes are an IPv4 address, which must itself pass the full check.
-            try {
-                return isInternal(InetAddress.getByAddress(new byte[]{b[2], b[3], b[4], b[5]}));
-            } catch (UnknownHostException e) {
-                return true;
-            }
+            return embeddedV4IsInternal(b[2], b[3], b[4], b[5]);
         }
         return b[0] == 0x20 && b[1] == 0x01 && b[2] == 0x0d && b[3] == (byte) 0xb8; // documentation 2001:db8::/32
     }

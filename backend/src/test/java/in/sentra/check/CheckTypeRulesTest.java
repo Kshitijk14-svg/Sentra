@@ -11,11 +11,11 @@ class CheckTypeRulesTest {
     private final CheckTypeRules rules = new CheckTypeRules();
 
     private static CreateCheckRequest http(String target, Integer interval) {
-        return new CreateCheckRequest(null, "  Site  ", null, target, null, null, interval, null, null, null, null);
+        return new CreateCheckRequest(null, "  Site  ", null, target, null, null, interval, null, null, null, null, null);
     }
 
     private static CreateCheckRequest tcp(String host, Integer port) {
-        return new CreateCheckRequest(CheckType.TCP, "Redis", null, null, null, null, null, null, null, host, port);
+        return new CreateCheckRequest(CheckType.TCP, "Redis", null, null, null, null, null, null, null, host, port, null);
     }
 
     @Test
@@ -70,7 +70,26 @@ class CheckTypeRulesTest {
     void explicitSiteOverridesTheDerivedOne() {
         Check c = new Check();
         rules.apply(c, new CreateCheckRequest(CheckType.TCP, "Cache", "Shop backend", null, null, null, null,
-                null, null, "10.0.0.5", 6379));
+                null, null, "10.0.0.5", 6379, null));
         assertThat(c.getSite()).isEqualTo("Shop backend");
+    }
+
+    @Test
+    void tlsDefaultsToPort443HourlyAndAFourteenDayWarning() {
+        Check c = new Check();
+        rules.apply(c, new CreateCheckRequest(CheckType.TLS, "Cert", null, null, null, null, null,
+                null, null, "example.com", null, null));
+        assertThat(c.getTarget()).isEqualTo("tls://example.com:443");
+        assertThat(c.getConfig()).containsEntry("port", 443).containsEntry("warnDays", 14);
+        assertThat(c.getIntervalSeconds()).isEqualTo(3600);
+        assertThat(c.getFailureThreshold()).isEqualTo(1);
+        assertThat(c.getSite()).isEqualTo("example.com");
+    }
+
+    @Test
+    void tlsRequiresAValidHost() {
+        assertThatThrownBy(() -> rules.apply(new Check(), new CreateCheckRequest(CheckType.TLS, "Cert", null, null,
+                null, null, null, null, null, "not a host!", null, null)))
+                .isInstanceOf(InvalidCheckException.class).hasMessageContaining("host");
     }
 }
