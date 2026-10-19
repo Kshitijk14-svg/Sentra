@@ -26,15 +26,27 @@ public class IncidentService {
         this.clock = clock;
     }
 
+    /** Pausing a check resolves its open incident quietly, so it cannot stay open (and remind) forever. */
+    @Transactional
+    public void closeOpenIncident(Long checkId) {
+        incidents.findByCheckIdAndClosedAtIsNull(checkId).ifPresent(i -> {
+            i.setClosedAt(clock.instant());
+            incidents.save(i);
+        });
+    }
+
     /**
      * Applies one run result to the check's state. The check row is locked so overlapping runs of
      * the same check (e.g. timeout longer than interval) update the counters one at a time.
      */
     @Transactional
-    public void record(Long checkId, boolean success, String error) {
+    public void record(Long checkId, boolean success, String error, boolean inconclusive) {
         Check check = checks.findByIdForUpdate(checkId).orElse(null);
         if (check == null) {
             return; // deleted while the probe was in flight
+        }
+        if (inconclusive) {
+            return; // "could not tell" is neither a failure nor a success: leave counters and state alone
         }
         EvaluationService.Outcome outcome = evaluation.evaluate(
                 check.getState(), check.getConsecutiveFailures(), check.getConsecutiveSuccesses(),

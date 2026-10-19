@@ -1,12 +1,6 @@
 package in.sentra.check;
 
-import in.sentra.project.ProjectRepository;
-import in.sentra.security.SsrfGuard;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -18,56 +12,30 @@ import java.util.List;
 @RequestMapping("/api/v1/checks")
 public class CheckController {
 
-    public record CreateCheckRequest(
-            @NotBlank String name,
-            @NotBlank @Pattern(regexp = "^https?://.+", message = "must be an http(s) URL") String target,
-            @Min(100) @Max(599) Integer expectedStatus,
-            @Min(500) @Max(60000) Integer timeoutMs,
-            @Min(10) Integer intervalSeconds,
-            @Min(1) @Max(20) Integer failureThreshold,
-            @Min(1) @Max(20) Integer recoveryThreshold) {
-    }
-
     private final CheckRepository checks;
     private final CheckRunRepository runs;
     private final CheckService service;
-    private final ProjectRepository projects;
-    private final SsrfGuard ssrfGuard;
 
-    public CheckController(CheckRepository checks, CheckRunRepository runs, CheckService service,
-                           ProjectRepository projects, SsrfGuard ssrfGuard) {
+    public CheckController(CheckRepository checks, CheckRunRepository runs, CheckService service) {
         this.checks = checks;
         this.runs = runs;
         this.service = service;
-        this.projects = projects;
-        this.ssrfGuard = ssrfGuard;
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Check create(@AuthenticationPrincipal Long userId, @Valid @RequestBody CreateCheckRequest req) {
-        ssrfGuard.validate(req.target());
-        Check check = new Check();
-        check.setProjectId(projects.findFirstByUserIdOrderByIdAsc(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "User has no project")).getId());
-        check.setName(req.name());
-        check.setTarget(req.target());
-        if (req.expectedStatus() != null) check.setExpectedStatus(req.expectedStatus());
-        if (req.timeoutMs() != null) check.setTimeoutMs(req.timeoutMs());
-        if (req.intervalSeconds() != null) check.setIntervalSeconds(req.intervalSeconds());
-        if (req.failureThreshold() != null) check.setFailureThreshold(req.failureThreshold());
-        if (req.recoveryThreshold() != null) check.setRecoveryThreshold(req.recoveryThreshold());
-        return checks.save(check);
+    public CheckResponse create(@AuthenticationPrincipal Long userId, @Valid @RequestBody CreateCheckRequest req) {
+        return CheckResponse.from(service.create(userId, req));
     }
 
     @GetMapping
-    public List<Check> list(@AuthenticationPrincipal Long userId) {
-        return checks.findAllForUser(userId);
+    public List<CheckResponse> list(@AuthenticationPrincipal Long userId) {
+        return checks.findAllForUser(userId).stream().map(CheckResponse::from).toList();
     }
 
     @GetMapping("/{id}")
-    public Check get(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
-        return find(id, userId);
+    public CheckResponse get(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
+        return CheckResponse.from(find(id, userId));
     }
 
     @PostMapping("/{id}/run")
@@ -79,6 +47,26 @@ public class CheckController {
     public List<CheckRun> history(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
         find(id, userId);
         return runs.findTop50ByCheckIdOrderByStartedAtDesc(id);
+    }
+
+    @PostMapping("/{id}/pause")
+    public CheckResponse pause(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
+        Check check = find(id, userId);
+        service.pause(check);
+        return CheckResponse.from(check);
+    }
+
+    @PostMapping("/{id}/resume")
+    public CheckResponse resume(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
+        Check check = find(id, userId);
+        service.resume(check);
+        return CheckResponse.from(check);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@AuthenticationPrincipal Long userId, @PathVariable Long id) {
+        service.delete(find(id, userId));
     }
 
     private Check find(Long id, Long userId) {

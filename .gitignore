@@ -25,3 +25,4 @@ Thumbs.db
 
 # Playwright screenshots and logs
 .playwright-mcp/
+hs_err_pid*.log

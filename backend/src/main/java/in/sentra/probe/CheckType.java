@@ -1,5 +1,5 @@
 package in.sentra.probe;
 
 public enum CheckType {
-    HTTP
+    HTTP, TCP
 }

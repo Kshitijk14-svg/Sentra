@@ -6,8 +6,12 @@ import in.sentra.probe.CheckType;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 
 @Entity
 @Table(name = "checks")
@@ -27,6 +31,16 @@ public class Check {
     @Enumerated(EnumType.STRING)
     private CheckType type = CheckType.HTTP;
     private String target;
+
+    /** Grouping key for the dashboard cards (usually the website's hostname). */
+    private String site;
+
+    /**
+     * Type-specific settings. Keys ending in "Enc" hold encrypted secrets and must never be sent
+     * to clients (see CheckResponse).
+     */
+    @JdbcTypeCode(SqlTypes.JSON)
+    private Map<String, Object> config = new HashMap<>();
 
     @Column(name = "expected_status")
     private int expectedStatus = 200;

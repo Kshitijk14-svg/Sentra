@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -48,6 +49,24 @@ class SsrfGuardTest {
         assertThatCode(() -> guard.validate("http://93.184.216.34/health")).doesNotThrowAnyException();
         assertThatCode(() -> guard.validate("http://[2606:2800:220:1:248:1893:25c8:1946]/")).doesNotThrowAnyException();
         assertThatCode(() -> guard.validate("http://[2002:5db8:d822::1]/")).doesNotThrowAnyException(); // 6to4 of a public IPv4
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"localhost", "127.0.0.1", "169.254.169.254", "10.0.0.1", "::1", "100.64.0.1"})
+    void validateHostRejectsInternalHosts(String host) {
+        assertThatThrownBy(() -> guard.validateHost(host)).isInstanceOf(SsrfException.class);
+    }
+
+    @Test
+    void validateHostAcceptsPublicAndRejectsUnresolvable() {
+        assertThatCode(() -> guard.validateHost("93.184.216.34")).doesNotThrowAnyException();
+        assertThatThrownBy(() -> guard.validateHost("this-host-does-not-exist.invalid"))
+                .isInstanceOf(HostNotFoundException.class);
+    }
+
+    @Test
+    void resolvePublicReturnsTheVettedAddresses() {
+        assertThat(guard.resolvePublic("93.184.216.34")).hasSize(1);
     }
 
     @Test

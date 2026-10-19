@@ -33,4 +33,8 @@ public class CheckRun {
     private long latencyMs;
 
     private String error;
+
+    private String detail;
+
+    private boolean inconclusive;
 }

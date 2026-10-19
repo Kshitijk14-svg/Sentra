@@ -42,8 +42,22 @@ public class SsrfGuard {
         if (host == null || host.isBlank()) {
             throw new SsrfException("URL has no host");
         }
-        if (allowPrivate) {
-            return;
+        resolvePublic(host);
+    }
+
+    /** For non-URL targets (TCP, database): same address rules, applied to a bare hostname or IP. */
+    public void validateHost(String host) {
+        resolvePublic(host);
+    }
+
+    /**
+     * Resolves the host and rejects it if ANY answer is internal. Returns the vetted addresses so a
+     * caller that connects to one of them directly (TCP, database) is not exposed to a second,
+     * different DNS answer between the check and the connect.
+     */
+    public InetAddress[] resolvePublic(String host) {
+        if (host == null || host.isBlank()) {
+            throw new SsrfException("URL has no host");
         }
         if (host.endsWith(".")) {
             host = host.substring(0, host.length() - 1);
@@ -52,14 +66,16 @@ public class SsrfGuard {
         try {
             addresses = InetAddress.getAllByName(host);
         } catch (UnknownHostException e) {
-            throw new SsrfException("Host could not be resolved");
+            throw new HostNotFoundException();
         }
-        // Every resolved address must be public; one private answer is enough to reject.
-        for (InetAddress address : addresses) {
-            if (isInternal(address)) {
-                throw new SsrfException("Target address is not allowed");
+        if (!allowPrivate) {
+            for (InetAddress address : addresses) {
+                if (isInternal(address)) {
+                    throw new SsrfException("Target address is not allowed");
+                }
             }
         }
+        return addresses;
     }
 
     static boolean isInternal(InetAddress a) {
