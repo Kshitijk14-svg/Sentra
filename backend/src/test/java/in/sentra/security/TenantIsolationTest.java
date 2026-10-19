@@ -23,7 +23,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * is slowed so the test checks are never probed.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT,
-        properties = {"server.port=18080", "sentra.scheduler.tick-ms=3600000"})
+        properties = {"server.port=18080", "sentra.scheduler.tick-ms=3600000",
+                "sentra.jwt.secret=test-only-signing-key-0123456789abcdef"})
 class TenantIsolationTest {
 
     private static final String BASE = "http://localhost:18080/api/v1";

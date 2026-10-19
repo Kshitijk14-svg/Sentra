@@ -18,8 +18,10 @@ Java 21 · Spring Boot 4.1 · PostgreSQL 16 · React + Vite
 2. Run the backend:
    ```
    cd backend
-   mvn spring-boot:run
+   mvn spring-boot:run -Dspring-boot.run.profiles=dev
    ```
+   The `dev` profile supplies a throwaway JWT secret. Without it the app refuses to start unless
+   `JWT_SECRET` is set (at least 32 bytes).
 3. Check it's alive: `curl http://localhost:8080/api/v1/ping` → `{"status":"ok"}`
 
 ## Environment variables
@@ -30,5 +32,6 @@ Java 21 · Spring Boot 4.1 · PostgreSQL 16 · React + Vite
 | `DB_USER` | `sentra` | Postgres user |
 | `DB_PASSWORD` | `devpass` | Postgres password |
 | `PORT` | `8080` | HTTP port |
-| `JWT_SECRET` | dev placeholder | JWT signing secret — set a real one before deploying |
+| `JWT_SECRET` | none (required; `dev` profile supplies a placeholder) | JWT signing secret, at least 32 bytes |
+| `SSRF_ALLOW_PRIVATE` | `false` | Local demos only: lets checks/webhooks target localhost/private IPs |
 | `JWT_EXPIRY_MINUTES` | `60` | Access token lifetime |

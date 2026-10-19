@@ -69,11 +69,38 @@ public class SsrfGuard {
         }
         byte[] b = a.getAddress();
         if (a instanceof Inet6Address) {
-            return (b[0] & 0xFE) == 0xFC; // unique local fc00::/7
+            return isInternalV6(b);
         }
-        int first = b[0] & 0xFF;
-        int second = b[1] & 0xFF;
-        return first == 0                                // 0.0.0.0/8
-                || (first == 100 && (second & 0xC0) == 64); // carrier-grade NAT 100.64.0.0/10
+        return isInternalV4(b[0] & 0xFF, b[1] & 0xFF, b[2] & 0xFF);
+    }
+
+    private static boolean isInternalV4(int first, int second, int third) {
+        return first == 0                                          // 0.0.0.0/8
+                || (first == 100 && (second & 0xC0) == 64)         // carrier-grade NAT 100.64.0.0/10
+                || (first == 192 && second == 0 && third == 0)    // IETF protocol assignments 192.0.0.0/24
+                || (first == 192 && second == 0 && third == 2)    // TEST-NET-1
+                || (first == 198 && (second & 0xFE) == 18)         // benchmarking 198.18.0.0/15
+                || (first == 198 && second == 51 && third == 100) // TEST-NET-2
+                || (first == 203 && second == 0 && third == 113)  // TEST-NET-3
+                || first >= 240;                                   // reserved 240.0.0.0/4 + broadcast
+    }
+
+    /** Allow-list approach: only global unicast 2000::/3 can pass, minus ranges that embed or tunnel IPv4. */
+    private static boolean isInternalV6(byte[] b) {
+        if ((b[0] & 0xE0) != 0x20) {
+            return true; // not global unicast: covers ::, ::1, fc00::/7, fe80::/10, ff00::/8, NAT64 64:ff9b::/96, ...
+        }
+        if (b[0] == 0x20 && b[1] == 0x01 && b[2] == 0 && b[3] == 0) {
+            return true; // Teredo 2001::/32 hides an IPv4 address
+        }
+        if (b[0] == 0x20 && b[1] == 0x02) {
+            // 6to4 2002::/16: the next four bytes are an IPv4 address, which must itself pass the full check.
+            try {
+                return isInternal(InetAddress.getByAddress(new byte[]{b[2], b[3], b[4], b[5]}));
+            } catch (UnknownHostException e) {
+                return true;
+            }
+        }
+        return b[0] == 0x20 && b[1] == 0x01 && b[2] == 0x0d && b[3] == (byte) 0xb8; // documentation 2001:db8::/32
     }
 }

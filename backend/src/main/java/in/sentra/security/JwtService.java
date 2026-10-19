@@ -26,8 +26,9 @@ public class JwtService {
                       @Value("${sentra.jwt.expiry-minutes}") long expiryMinutes,
                       @Value("${spring.profiles.active:}") String profiles,
                       Clock clock) {
-        if (profiles.contains("prod") && secret.startsWith("dev-only")) {
-            throw new IllegalStateException("JWT_SECRET must be set to a real secret in the prod profile");
+        // Deny by default: the published dev secret is only acceptable when the dev profile is explicit.
+        if (secret.startsWith("dev-only") && !profiles.contains("dev")) {
+            throw new IllegalStateException("JWT_SECRET must be set to a real secret (dev secret needs the dev profile)");
         }
         byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
         if (bytes.length < 32) {

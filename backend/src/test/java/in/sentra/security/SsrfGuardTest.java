@@ -24,6 +24,16 @@ class SsrfGuardTest {
             "http://100.64.0.1",
             "http://0.0.0.0",
             "http://[::ffff:127.0.0.1]",
+            "http://[::127.0.0.1]",
+            "http://[64:ff9b::7f00:1]",
+            "http://[2002:7f00:1::1]",
+            "http://[2002:a9fe:a9fe::1]",
+            "http://[2001:0:4136:e378:8000:63bf:3fff:fdd2]",
+            "http://[2001:db8::1]",
+            "http://192.0.0.8",
+            "http://198.18.0.1",
+            "http://240.0.0.1",
+            "http://255.255.255.255",
             "http://user:pass@93.184.216.34",
             "file:///etc/passwd",
             "ftp://93.184.216.34",
@@ -36,6 +46,8 @@ class SsrfGuardTest {
     @Test
     void acceptsPublicAddress() {
         assertThatCode(() -> guard.validate("http://93.184.216.34/health")).doesNotThrowAnyException();
+        assertThatCode(() -> guard.validate("http://[2606:2800:220:1:248:1893:25c8:1946]/")).doesNotThrowAnyException();
+        assertThatCode(() -> guard.validate("http://[2002:5db8:d822::1]/")).doesNotThrowAnyException(); // 6to4 of a public IPv4
     }
 
     @Test

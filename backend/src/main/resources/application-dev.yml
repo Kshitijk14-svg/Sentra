@@ -1,0 +1,4 @@
+# Local development only: run with `-Dspring-boot.run.profiles=dev`. Never activate in a deployed environment.
+sentra:
+  jwt:
+    secret: ${JWT_SECRET:dev-only-secret-change-me-before-deploying-1234567890}
