@@ -2,6 +2,7 @@ package in.sentra.incident;
 
 import in.sentra.check.Check;
 import in.sentra.check.CheckRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,10 +14,12 @@ public class IncidentService {
     private final CheckRepository checks;
     private final IncidentRepository incidents;
     private final EvaluationService evaluation;
+    private final ApplicationEventPublisher events;
     private final Clock clock;
 
     public IncidentService(CheckRepository checks, IncidentRepository incidents,
-                           EvaluationService evaluation, Clock clock) {
+                           EvaluationService evaluation, ApplicationEventPublisher events, Clock clock) {
+        this.events = events;
         this.checks = checks;
         this.incidents = incidents;
         this.evaluation = evaluation;
@@ -47,11 +50,13 @@ public class IncidentService {
                 incident.setCheckId(checkId);
                 incident.setOpenedAt(clock.instant());
                 incident.setLastError(error);
-                incidents.save(incident);
+                Incident saved = incidents.save(incident);
+                events.publishEvent(new IncidentOpenedEvent(saved.getId(), checkId));
             }
             case CLOSED -> incidents.findByCheckIdAndClosedAtIsNull(checkId).ifPresent(i -> {
                 i.setClosedAt(clock.instant());
                 incidents.save(i);
+                events.publishEvent(new IncidentClosedEvent(i.getId(), checkId));
             });
             case NONE -> {
                 if (!success && check.getState() == CheckState.DOWN) {

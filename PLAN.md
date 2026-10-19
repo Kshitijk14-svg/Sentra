@@ -85,11 +85,11 @@ completes so any future session can resume from here without re-deriving context
 - [x] Exit check: break → 1 incident after 3 fails; fix → closes after 2 successes; tests pass
 
 ### Phase 4 — Alerting (days 9-10)
-- [ ] `V5__alerts.sql` (`alert_rules`, `alert_deliveries` + `uq_alert_once`)
-- [ ] `Notifier` interface + `WebhookNotifier`
-- [ ] `IncidentOpenedEvent`/`IncidentClosedEvent` + listener (not direct call)
-- [ ] Reminder sweep, widening backoff (15/30/60/hourly)
-- [ ] Exit check: break → exactly 1 webhook at 3rd failure, 1 more on recovery; forced duplicate
+- [x] `V5__alerts.sql` (`alert_rules`, `alert_deliveries` + `uq_alert_once`)
+- [x] `Notifier` interface + `WebhookNotifier`
+- [x] `IncidentOpenedEvent`/`IncidentClosedEvent` + listener (not direct call)
+- [x] Reminder sweep, widening backoff (15/30/60/hourly)
+- [x] Exit check: break → exactly 1 webhook at 3rd failure, 1 more on recovery; forced duplicate
       blocked by DB constraint
 
 ### Phase 5 — Auth + multi-tenancy + SSRF guard (days 11-13)

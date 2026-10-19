@@ -9,6 +9,8 @@ public interface IncidentRepository extends JpaRepository<Incident, Long> {
 
     Optional<Incident> findByCheckIdAndClosedAtIsNull(Long checkId);
 
+    List<Incident> findByClosedAtIsNull();
+
     List<Incident> findTop100ByOrderByOpenedAtDesc();
 
     List<Incident> findByCheckIdOrderByOpenedAtDesc(Long checkId);
