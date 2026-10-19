@@ -165,7 +165,9 @@ export default function CheckDetail() {
                 <tr key={r.id}>
                   <td>{clock(r.startedAt)}</td>
                   <td className={r.success ? 'ok-text' : 'fail-text'}>
-                    {r.success ? `OK, HTTP ${r.statusCode}` : r.error || `HTTP ${r.statusCode}`}
+                    {r.success
+                      ? r.detail || `OK, HTTP ${r.statusCode}`
+                      : r.error || `HTTP ${r.statusCode}`}
                   </td>
                   <td className="num">{r.latencyMs} ms</td>
                 </tr>

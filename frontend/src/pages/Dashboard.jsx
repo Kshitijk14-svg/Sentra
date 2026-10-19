@@ -13,7 +13,11 @@ const INTERVALS = [
 
 function AddCheck({ onCreated, onCancel }) {
   const [name, setName] = useState('');
+  const [type, setType] = useState('HTTP');
   const [target, setTarget] = useState('');
+  const [host, setHost] = useState('');
+  const [port, setPort] = useState('');
+  const [site, setSite] = useState('');
   const [intervalSeconds, setIntervalSeconds] = useState(60);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -23,9 +27,16 @@ function AddCheck({ onCreated, onCancel }) {
     setBusy(true);
     setError(null);
     try {
-      await api.createCheck({ name, target, intervalSeconds: Number(intervalSeconds) });
+      const body = { type, name, intervalSeconds: Number(intervalSeconds) };
+      if (site.trim()) body.site = site.trim();
+      if (type === 'TCP') Object.assign(body, { host, port: Number(port) });
+      else body.target = target;
+      await api.createCheck(body);
       setName('');
       setTarget('');
+      setHost('');
+      setPort('');
+      setSite('');
       onCreated();
     } catch (err) {
       setError(err);
@@ -40,10 +51,35 @@ function AddCheck({ onCreated, onCancel }) {
         <span>Name</span>
         <input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Marketing site" />
       </label>
-      <label className="field field-wide">
-        <span>URL to check</span>
-        <input required type="url" value={target} onChange={(e) => setTarget(e.target.value)}
-          placeholder="https://example.com/health" />
+      <label className="field">
+        <span>Type</span>
+        <select value={type} onChange={(e) => setType(e.target.value)}>
+          <option value="HTTP">Website (HTTP)</option>
+          <option value="TCP">Port (TCP)</option>
+        </select>
+      </label>
+      {type === 'TCP' ? (
+        <>
+          <label className="field field-wide">
+            <span>Host</span>
+            <input required value={host} onChange={(e) => setHost(e.target.value)} placeholder="db.example.com" />
+          </label>
+          <label className="field">
+            <span>Port</span>
+            <input required type="number" min="1" max="65535" value={port}
+              onChange={(e) => setPort(e.target.value)} placeholder="5432" />
+          </label>
+        </>
+      ) : (
+        <label className="field field-wide">
+          <span>URL to check</span>
+          <input required type="url" value={target} onChange={(e) => setTarget(e.target.value)}
+            placeholder="https://example.com/health" />
+        </label>
+      )}
+      <label className="field">
+        <span>Site (optional)</span>
+        <input value={site} onChange={(e) => setSite(e.target.value)} placeholder="example.com" />
       </label>
       <label className="field">
         <span>Check every</span>
@@ -58,6 +94,17 @@ function AddCheck({ onCreated, onCancel }) {
       <ErrorNote error={error} />
     </form>
   );
+}
+
+/** One group per site, in first-seen order; checks with no site share a trailing group. */
+function bySite(items) {
+  const groups = new Map();
+  for (const item of items) {
+    const key = item.check.site || 'Other';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(item);
+  }
+  return [...groups];
 }
 
 export default function Dashboard() {
@@ -99,13 +146,17 @@ export default function Dashboard() {
         />
       )}
 
-      {items.length > 0 && (
-        <ul className="rows">
-          {items.map(({ check, runs }) => (
+      {bySite(items).map(([site, group]) => (
+        <section key={site} className="site">
+          <h2 className="site-name">{site}</h2>
+          <ul className="rows">
+          {group.map(({ check, runs }) => (
             <li key={check.id}>
               <Link to={`/checks/${check.id}`} className="row">
                 <div className="row-main">
-                  <div className="row-name">{check.name}</div>
+                  <div className="row-name">
+                    {check.name} <span className="type-tag">{check.type}</span>
+                  </div>
                   <div className="row-target">{check.target}</div>
                 </div>
                 <div className="row-tape"><Tape runs={runs} slots={30} /></div>
@@ -120,8 +171,9 @@ export default function Dashboard() {
               </Link>
             </li>
           ))}
-        </ul>
-      )}
+          </ul>
+        </section>
+      ))}
     </>
   );
 }

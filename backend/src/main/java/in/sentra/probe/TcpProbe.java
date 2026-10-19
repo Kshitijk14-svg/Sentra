@@ -21,6 +21,9 @@ import java.net.SocketTimeoutException;
 @Component
 public class TcpProbe implements Probe {
 
+    /** A host can resolve to many addresses; trying them all would stretch one run far past its timeout. */
+    static final int MAX_ADDRESSES = 3;
+
     private final SsrfGuard ssrfGuard;
 
     public TcpProbe(SsrfGuard ssrfGuard) {
@@ -40,9 +43,17 @@ public class TcpProbe implements Probe {
         try {
             InetAddress[] addresses = ssrfGuard.resolvePublic(host);
             IOException last = null;
-            for (InetAddress address : addresses) {
+            // One timeout budget for the whole run, shared across the addresses tried.
+            long deadline = start + check.getTimeoutMs() * 1_000_000L;
+            for (int i = 0; i < Math.min(addresses.length, MAX_ADDRESSES); i++) {
+                InetAddress address = addresses[i];
+                int remainingMs = (int) ((deadline - System.nanoTime()) / 1_000_000);
+                if (remainingMs <= 0) {
+                    last = new SocketTimeoutException();
+                    break;
+                }
                 try (Socket socket = new Socket()) {
-                    socket.connect(new InetSocketAddress(address, port), check.getTimeoutMs());
+                    socket.connect(new InetSocketAddress(address, port), remainingMs);
                     String family = address instanceof Inet6Address ? "IPv6" : "IPv4";
                     return ProbeResult.ok(elapsedMs(start),
                             "Connected over " + family + " to " + address.getHostAddress());
