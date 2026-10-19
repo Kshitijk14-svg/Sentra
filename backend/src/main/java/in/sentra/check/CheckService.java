@@ -1,5 +1,6 @@
 package in.sentra.check;
 
+import in.sentra.incident.IncidentService;
 import in.sentra.probe.ProbeRegistry;
 import in.sentra.probe.ProbeResult;
 import org.springframework.stereotype.Service;
@@ -12,11 +13,13 @@ public class CheckService {
 
     private final CheckRunRepository runs;
     private final ProbeRegistry probes;
+    private final IncidentService incidents;
     private final Clock clock;
 
-    public CheckService(CheckRunRepository runs, ProbeRegistry probes, Clock clock) {
+    public CheckService(CheckRunRepository runs, ProbeRegistry probes, IncidentService incidents, Clock clock) {
         this.runs = runs;
         this.probes = probes;
+        this.incidents = incidents;
         this.clock = clock;
     }
 
@@ -35,6 +38,8 @@ public class CheckService {
         run.setStatusCode(result.statusCode());
         run.setLatencyMs(result.latencyMs());
         run.setError(result.error());
-        return runs.save(run);
+        CheckRun saved = runs.save(run);
+        incidents.record(check.getId(), result.success(), result.error());
+        return saved;
     }
 }

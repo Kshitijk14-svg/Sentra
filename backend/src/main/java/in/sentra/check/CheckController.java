@@ -20,7 +20,9 @@ public class CheckController {
             @NotBlank @Pattern(regexp = "^https?://.+", message = "must be an http(s) URL") String target,
             @Min(100) @Max(599) Integer expectedStatus,
             @Min(500) @Max(60000) Integer timeoutMs,
-            @Min(10) Integer intervalSeconds) {
+            @Min(10) Integer intervalSeconds,
+            @Min(1) @Max(20) Integer failureThreshold,
+            @Min(1) @Max(20) Integer recoveryThreshold) {
     }
 
     private final CheckRepository checks;
@@ -42,6 +44,8 @@ public class CheckController {
         if (req.expectedStatus() != null) check.setExpectedStatus(req.expectedStatus());
         if (req.timeoutMs() != null) check.setTimeoutMs(req.timeoutMs());
         if (req.intervalSeconds() != null) check.setIntervalSeconds(req.intervalSeconds());
+        if (req.failureThreshold() != null) check.setFailureThreshold(req.failureThreshold());
+        if (req.recoveryThreshold() != null) check.setRecoveryThreshold(req.recoveryThreshold());
         return checks.save(check);
     }
 

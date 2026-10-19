@@ -76,13 +76,13 @@ completes so any future session can resume from here without re-deriving context
       delay others
 
 ### Phase 3 — Incidents + hysteresis (days 7-8)
-- [ ] `V4__incidents.sql` (`incidents` + counters on `checks`)
-- [ ] `CheckState` enum (`PENDING/HEALTHY/DEGRADED/DOWN/PAUSED`)
-- [ ] `EvaluationService` (pure, no Spring context)
-- [ ] Configurable thresholds (default 3/2)
-- [ ] `GET /incidents`, `GET /checks/{id}/incidents`
-- [ ] 5 hysteresis unit tests
-- [ ] Exit check: break → 1 incident after 3 fails; fix → closes after 2 successes; tests pass
+- [x] `V4__incidents.sql` (`incidents` + counters on `checks`)
+- [x] `CheckState` enum (`PENDING/HEALTHY/DEGRADED/DOWN/PAUSED`)
+- [x] `EvaluationService` (pure, no Spring context)
+- [x] Configurable thresholds (default 3/2)
+- [x] `GET /incidents`, `GET /checks/{id}/incidents`
+- [x] 7 hysteresis unit tests (EvaluationServiceTest)
+- [x] Exit check: break → 1 incident after 3 fails; fix → closes after 2 successes; tests pass
 
 ### Phase 4 — Alerting (days 9-10)
 - [ ] `V5__alerts.sql` (`alert_rules`, `alert_deliveries` + `uq_alert_once`)

@@ -1,6 +1,7 @@
 package in.sentra.check;
 
 import jakarta.persistence.*;
+import in.sentra.incident.CheckState;
 import in.sentra.probe.CheckType;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -37,6 +38,21 @@ public class Check {
     private int intervalSeconds = 60;
 
     private boolean enabled = true;
+
+    @Enumerated(EnumType.STRING)
+    private CheckState state = CheckState.PENDING;
+
+    @Column(name = "consecutive_failures")
+    private int consecutiveFailures;
+
+    @Column(name = "consecutive_successes")
+    private int consecutiveSuccesses;
+
+    @Column(name = "failure_threshold")
+    private int failureThreshold = 3;
+
+    @Column(name = "recovery_threshold")
+    private int recoveryThreshold = 2;
 
     @Column(name = "next_run_at")
     private Instant nextRunAt = Instant.now();
