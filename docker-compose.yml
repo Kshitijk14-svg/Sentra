@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16
+    container_name: sentra-db
+    environment:
+      POSTGRES_USER: sentra
+      POSTGRES_PASSWORD: devpass
+      POSTGRES_DB: sentra
+    ports:
+      - "55432:5432"
+    volumes:
+      - sentra-data:/var/lib/postgresql/data
+
+volumes:
+  sentra-data:
