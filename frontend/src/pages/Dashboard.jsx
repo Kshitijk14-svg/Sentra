@@ -13,22 +13,125 @@ const INTERVALS = [
   { value: 86400, label: '1 day' },
 ];
 
-const PERIODS = [
-  { value: 60, label: '1 minute' },
-  { value: 300, label: '5 minutes' },
-  { value: 900, label: '15 minutes' },
-  { value: 3600, label: '1 hour' },
-  { value: 21600, label: '6 hours' },
-  { value: 86400, label: '1 day' },
-  { value: 604800, label: '1 week' },
+const UNITS = [
+  { seconds: 1, label: 'seconds' },
+  { seconds: 60, label: 'minutes' },
+  { seconds: 3600, label: 'hours' },
+  { seconds: 86400, label: 'days' },
 ];
+
+const PERIOD_PRESETS = [
+  { seconds: 30, label: '30 s' },
+  { seconds: 60, label: '1 min' },
+  { seconds: 300, label: '5 min' },
+  { seconds: 900, label: '15 min' },
+  { seconds: 3600, label: '1 hour' },
+  { seconds: 86400, label: '1 day' },
+  { seconds: 604800, label: '1 week' },
+];
+
+/** Same rule as CronProbe.defaultGrace on the backend: 20% of the period, between 10 s and 1 hour. */
+const defaultGrace = (period) => Math.max(10, Math.min(3600, Math.round(period * 0.2)));
+
+/** Largest unit that divides the value exactly, e.g. 900 -> 15 minutes. */
+function split(seconds) {
+  const unit = [...UNITS].reverse().find((u) => seconds % u.seconds === 0) || UNITS[0];
+  return { value: String(seconds / unit.seconds), unit: unit.seconds };
+}
+
+function human(seconds) {
+  const { value, unit } = split(seconds);
+  const label = UNITS.find((u) => u.seconds === unit).label;
+  return `${value} ${value === '1' ? label.slice(0, -1) : label}`;
+}
+
+/** "Job runs every" with any value and unit, plus the allowed delay derived from it. */
+function CronSchedule({ period, setPeriod, grace, setGrace, graceTouched, setGraceTouched }) {
+  // Units are remembered separately so clearing a number box does not flip its unit.
+  const [periodUnit, setPeriodUnit] = useState(split(period).unit);
+  const [graceUnit, setGraceUnit] = useState(split(grace).unit);
+  const p = { value: period ? String(period / periodUnit) : '', unit: periodUnit };
+  const g = { value: String(grace / graceUnit), unit: graceUnit };
+  const onPeriod = (seconds, unit = periodUnit) => {
+    setPeriodUnit(unit);
+    setPeriod(seconds);
+    if (!graceTouched) {
+      const auto = defaultGrace(seconds);
+      setGrace(auto);
+      setGraceUnit(split(auto).unit);
+    }
+  };
+  return (
+    <>
+      <div className="field field-wide">
+        <span>Job runs every</span>
+        <div className="unit-input">
+          <input required type="number" min="1" value={p.value} aria-label="Job period"
+            onChange={(e) => onPeriod(Math.max(0, Number(e.target.value)) * p.unit)} />
+          <select value={p.unit} aria-label="Period unit"
+            onChange={(e) => onPeriod(Number(p.value) * Number(e.target.value), Number(e.target.value))}>
+            {UNITS.map((u) => <option key={u.seconds} value={u.seconds}>{u.label}</option>)}
+          </select>
+        </div>
+        <div className="chips">
+          {PERIOD_PRESETS.map((x) => (
+            <button key={x.seconds} type="button" className="chip" aria-pressed={period === x.seconds}
+              onClick={() => onPeriod(x.seconds, split(x.seconds).unit)}>{x.label}</button>
+          ))}
+        </div>
+      </div>
+      <div className="field">
+        <span>Allowed delay {graceTouched ? '' : '(auto: 20%)'}</span>
+        <div className="unit-input">
+          <input required type="number" min="0" value={g.value} aria-label="Allowed delay"
+            onChange={(e) => { setGraceTouched(true); setGrace(Math.max(0, Number(e.target.value)) * g.unit); }} />
+          <select value={g.unit} aria-label="Delay unit"
+            onChange={(e) => {
+              setGraceTouched(true);
+              setGraceUnit(Number(e.target.value));
+              setGrace(Number(g.value) * Number(e.target.value));
+            }}>
+            {UNITS.map((u) => <option key={u.seconds} value={u.seconds}>{u.label}</option>)}
+          </select>
+        </div>
+        {graceTouched && (
+          <button type="button" className="link small" style={{ alignSelf: 'flex-start' }}
+            onClick={() => {
+              const auto = defaultGrace(period);
+              setGraceTouched(false);
+              setGrace(auto);
+              setGraceUnit(split(auto).unit);
+            }}>
+            Reset to auto
+          </button>
+        )}
+      </div>
+      {period >= 10 && (
+        <p className="schedule-note">
+          <b>How Sentra watches this job:</b> it expects a ping every <b>{human(period)}</b>. It checks
+          right after each ping, and once more at the deadline. If no ping arrives within{' '}
+          <b>{human(period)} + {human(grace)} = {human(period + grace)}</b> of the last one, the job is
+          marked <b>DOWN</b>. That is about {Math.round(86400 / period).toLocaleString()} check
+          {Math.round(86400 / period) === 1 ? '' : 's'} a day, one per run of the job, never a fixed timer.
+        </p>
+      )}
+      {period > 0 && period < 10 && (
+        <p className="schedule-note schedule-warn">The shortest supported schedule is 10 seconds.</p>
+      )}
+    </>
+  );
+}
 
 const TYPES = [
   { value: 'HTTP', label: 'Website', icon: '🌐' },
   { value: 'TCP', label: 'Port', icon: '🔌' },
   { value: 'TLS', label: 'Certificate', icon: '🔒' },
+  { value: 'DOMAIN', label: 'Domain', icon: '📅' },
   { value: 'CRON', label: 'Cron job', icon: '⏱' },
 ];
+
+// Registries rate-limit and expiry dates move over days, so a domain check runs hourly at most.
+const DOMAIN_INTERVALS = INTERVALS.filter((i) => i.value >= 3600);
 
 function AddCheck({ onCreated, onCancel }) {
   const navigate = useNavigate();
@@ -38,10 +141,12 @@ function AddCheck({ onCreated, onCancel }) {
   const [host, setHost] = useState('');
   const [port, setPort] = useState('');
   const [warnDays, setWarnDays] = useState('14');
+  const [domainWarnDays, setDomainWarnDays] = useState('30');
   const [site, setSite] = useState('');
   const [intervalSeconds, setIntervalSeconds] = useState(60);
   const [periodSeconds, setPeriodSeconds] = useState(3600);
-  const [graceMinutes, setGraceMinutes] = useState('5');
+  const [graceSeconds, setGraceSeconds] = useState(defaultGrace(3600));
+  const [graceTouched, setGraceTouched] = useState(false);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
 
@@ -58,8 +163,12 @@ function AddCheck({ onCreated, onCancel }) {
         Object.assign(body, { host, warnDays: Number(warnDays) });
         if (port) body.port = Number(port);
       }
+      else if (type === 'DOMAIN') {
+        Object.assign(body, { host, warnDays: Number(domainWarnDays) });
+        if (body.intervalSeconds < 3600) body.intervalSeconds = 86400;
+      }
       else if (type === 'CRON') {
-        Object.assign(body, { periodSeconds: Number(periodSeconds), graceSeconds: Number(graceMinutes) * 60 });
+        Object.assign(body, { periodSeconds, graceSeconds });
       }
       else body.target = target;
       const created = await api.createCheck(body);
@@ -87,7 +196,10 @@ function AddCheck({ onCreated, onCancel }) {
       <div className="segmented" role="group" aria-label="Check type">
         {TYPES.map((t) => (
           <button key={t.value} type="button" className="seg" aria-pressed={type === t.value}
-            onClick={() => setType(t.value)}>
+            onClick={() => {
+              if (t.value !== type) setIntervalSeconds(t.value === 'DOMAIN' ? 86400 : 60);
+              setType(t.value);
+            }}>
             <span className="seg-icon" aria-hidden="true">{t.icon}</span>{t.label}
           </button>
         ))}
@@ -99,17 +211,19 @@ function AddCheck({ onCreated, onCancel }) {
             placeholder={type === 'CRON' ? 'Nightly backup' : 'Marketing site'} />
         </label>
         {type === 'CRON' ? (
+          <CronSchedule period={periodSeconds} setPeriod={setPeriodSeconds}
+            grace={graceSeconds} setGrace={setGraceSeconds}
+            graceTouched={graceTouched} setGraceTouched={setGraceTouched} />
+        ) : type === 'DOMAIN' ? (
           <>
-            <label className="field">
-              <span>Job runs every</span>
-              <select value={periodSeconds} onChange={(e) => setPeriodSeconds(e.target.value)}>
-                {PERIODS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-              </select>
+            <label className="field field-wide">
+              <span>Domain</span>
+              <input required value={host} onChange={(e) => setHost(e.target.value)} placeholder="example.com" />
             </label>
             <label className="field">
-              <span>Allowed delay (minutes)</span>
-              <input required type="number" min="0" max="1440" value={graceMinutes}
-                onChange={(e) => setGraceMinutes(e.target.value)} />
+              <span>Warn before expiry (days)</span>
+              <input required type="number" min="1" max="365" value={domainWarnDays}
+                onChange={(e) => setDomainWarnDays(e.target.value)} />
             </label>
           </>
         ) : type === 'TLS' ? (
@@ -156,7 +270,8 @@ function AddCheck({ onCreated, onCancel }) {
           <label className="field">
             <span>Check every</span>
             <select value={intervalSeconds} onChange={(e) => setIntervalSeconds(e.target.value)}>
-              {INTERVALS.map((i) => <option key={i.value} value={i.value}>{i.label}</option>)}
+              {(type === 'DOMAIN' ? DOMAIN_INTERVALS : INTERVALS)
+                .map((i) => <option key={i.value} value={i.value}>{i.label}</option>)}
             </select>
           </label>
         )}
@@ -264,6 +379,8 @@ export default function Dashboard() {
                   <div className="muted small">
                     {check.type === 'CRON'
                       ? check.lastPingAt ? `Last ping ${timeAgo(check.lastPingAt)}` : 'No ping yet'
+                      : check.type === 'DOMAIN'
+                        ? runs[0]?.detail || runs[0]?.error || 'Checked daily'
                       : runs.length
                         ? `${runs[0].latencyMs} ms · ${timeAgo(runs[0].startedAt)}`
                         : `every ${check.intervalSeconds}s`}

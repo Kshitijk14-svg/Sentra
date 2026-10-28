@@ -99,12 +99,12 @@ class CheckTypeRulesTest {
     }
 
     @Test
-    void cronGetsATokenGraceDefaultAndAFrequentProbe() {
+    void cronGetsATokenGraceDefaultAndItsPeriodAsInterval() {
         Check c = new Check();
         rules.apply(c, cron(86400, null));
         assertThat(c.getPingToken()).hasSize(32);
-        assertThat(c.getConfig()).containsEntry("periodSeconds", 86400).containsEntry("graceSeconds", 300);
-        assertThat(c.getIntervalSeconds()).isEqualTo(30);
+        assertThat(c.getConfig()).containsEntry("periodSeconds", 86400).containsEntry("graceSeconds", 3600);
+        assertThat(c.getIntervalSeconds()).isEqualTo(86400);
         assertThat(c.getFailureThreshold()).isEqualTo(1);
         assertThat(c.getSite()).isEqualTo("Scheduled jobs");
     }
@@ -116,6 +116,41 @@ class CheckTypeRulesTest {
         rules.apply(a, cron(60, 0));
         rules.apply(b, cron(60, 0));
         assertThat(a.getPingToken()).isNotEqualTo(b.getPingToken());
+    }
+
+    private static CreateCheckRequest domain(String host, Integer interval) {
+        return new CreateCheckRequest(CheckType.DOMAIN, "Domain", null, null, null, null, interval, null, null,
+                host, null, null, null, null);
+    }
+
+    @Test
+    void domainDefaultsToDailyWithAThirtyDayWarning() {
+        Check c = new Check();
+        rules.apply(c, domain("labelminara.com", null));
+        assertThat(c.getConfig()).containsEntry("domain", "labelminara.com").containsEntry("warnDays", 30);
+        assertThat(c.getTarget()).isEqualTo("domain://labelminara.com");
+        assertThat(c.getSite()).isEqualTo("labelminara.com");
+        assertThat(c.getIntervalSeconds()).isEqualTo(86400);
+        assertThat(c.getFailureThreshold()).isEqualTo(1);
+    }
+
+    @Test
+    void domainTrimsAPastedUrlDownToTheRegisteredName() {
+        assertThat(CheckTypeRules.normalizeDomain("https://www.LabelMinara.com/shop?x=1")).isEqualTo("labelminara.com");
+        assertThat(CheckTypeRules.normalizeDomain(" example.co.in. ")).isEqualTo("example.co.in");
+        assertThat(CheckTypeRules.normalizeDomain("example.com:443")).isEqualTo("example.com");
+    }
+
+    @Test
+    void domainRejectsNonDomainsAndHourlyPlusRates() {
+        assertThatThrownBy(() -> rules.apply(new Check(), domain("localhost", null)))
+                .isInstanceOf(InvalidCheckException.class).hasMessageContaining("domain");
+        assertThatThrownBy(() -> rules.apply(new Check(), domain("10.0.0.1", null)))
+                .isInstanceOf(InvalidCheckException.class);
+        assertThatThrownBy(() -> rules.apply(new Check(), domain("bad_name.com", null)))
+                .isInstanceOf(InvalidCheckException.class);
+        assertThatThrownBy(() -> rules.apply(new Check(), domain("example.com", 60)))
+                .isInstanceOf(InvalidCheckException.class).hasMessageContaining("once an hour");
     }
 
     @Test

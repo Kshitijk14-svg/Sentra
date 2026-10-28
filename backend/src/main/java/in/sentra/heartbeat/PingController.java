@@ -20,9 +20,9 @@ import java.time.Instant;
 
 /**
  * Public (no JWT) endpoint a scheduled job calls. The token in the path is the only credential,
- * so an unknown token gets a plain 404 and nothing else is revealed. A success ping only records
- * the time (the probe turns it into a run on its next tick); a failure ping opens the incident
- * right away rather than waiting for that tick.
+ * so an unknown token gets a plain 404 and nothing else is revealed. A success ping records the
+ * time and makes the check due at once, so the probe turns it into a run on the next scheduler
+ * tick; a failure ping opens the incident right away rather than waiting for that tick.
  */
 @RestController("heartbeatPingController") // common.PingController already takes the default bean name
 @RequestMapping("/ping")
@@ -45,8 +45,12 @@ public class PingController {
     @Transactional
     public String success(@PathVariable String token) {
         Check check = find(token);
-        check.setLastPingAt(clock.instant());
+        Instant now = clock.instant();
+        check.setLastPingAt(now);
         check.setLastPingStatus("SUCCESS");
+        // Evaluate on the next scheduler tick: records the run and lets a DOWN job recover within seconds.
+        // After that, CronProbe.nextRunAt schedules the next evaluation at the new deadline.
+        check.setNextRunAt(now);
         checks.save(check);
         return "OK";
     }

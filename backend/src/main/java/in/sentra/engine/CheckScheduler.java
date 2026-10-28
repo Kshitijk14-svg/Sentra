@@ -3,6 +3,7 @@ package in.sentra.engine;
 import in.sentra.check.Check;
 import in.sentra.check.CheckRepository;
 import in.sentra.check.CheckService;
+import in.sentra.probe.ProbeRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -24,6 +25,7 @@ public class CheckScheduler {
 
     private final CheckRepository checks;
     private final CheckService service;
+    private final ProbeRegistry probes;
     private final ThreadPoolTaskExecutor executor;
     private final TransactionTemplate tx;
     private final Clock clock;
@@ -31,12 +33,14 @@ public class CheckScheduler {
 
     public CheckScheduler(CheckRepository checks,
                           CheckService service,
+                          ProbeRegistry probes,
                           @Qualifier("probeExecutor") ThreadPoolTaskExecutor executor,
                           TransactionTemplate tx,
                           Clock clock,
                           @Value("${sentra.scheduler.batch-size:50}") int batchSize) {
         this.checks = checks;
         this.service = service;
+        this.probes = probes;
         this.executor = executor;
         this.tx = tx;
         this.clock = clock;
@@ -64,7 +68,8 @@ public class CheckScheduler {
             Instant now = clock.instant();
             List<Check> due = checks.findDueForUpdate(now, batchSize);
             for (Check check : due) {
-                check.setNextRunAt(now.plusSeconds(check.getIntervalSeconds()));
+                // Usually now + interval; a type can choose its own moment (CRON: its ping deadline).
+                check.setNextRunAt(probes.get(check.getType()).nextRunAt(check, now));
             }
             return checks.saveAll(due);
         });

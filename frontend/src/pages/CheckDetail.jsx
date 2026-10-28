@@ -39,9 +39,9 @@ function PingSetup({ check }) {
         </span>
       </div>
       <p className="muted measure">
-        Call this URL at the end of the job. If no ping arrives within {human(period)}
-        {grace ? ` plus ${human(grace)} grace` : ''}, the check fails. Keep it secret: anyone with the URL can
-        mark the job as healthy.
+        Call this URL at the end of the job. Sentra checks right after each ping and again at the deadline:
+        if no ping arrives within {human(period)}{grace ? ` plus ${human(grace)} grace` : ''}, the check fails.
+        Keep it secret: anyone with the URL can mark the job as healthy.
       </p>
       <div className="copy-row">
         <p className="webhook-url">{url}</p>

@@ -174,6 +174,7 @@ code { font-family: var(--mono); font-size: 0.9em; }
 .type-TCP { color: #5eead4; }
 .type-TLS { color: #f0abfc; }
 .type-CRON { color: #fdba74; }
+.type-DOMAIN { color: #fde047; }
 
 /* ---------- The run tape ---------- */
 .tape {
@@ -260,14 +261,35 @@ code { font-family: var(--mono); font-size: 0.9em; }
 
 /* ---------- Add check ---------- */
 .add { margin-bottom: 1.6rem; }
-.add-grid { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; }
+.add-grid { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-start; }
+.add-grid .add-actions { align-self: flex-end; }
 .add .field { flex: 1 1 10rem; }
 .add .field-wide, .inline-form .field-wide { flex: 2 1 16rem; }
 .add-actions { display: flex; gap: 0.5rem; }
 .add .note, .inline-form .note { flex-basis: 100%; }
 .inline-form { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end; margin-top: 0.85rem; }
 
-.segmented { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1.1rem; padding: 0.3rem; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; width: fit-content; max-width: 100%; }
+.unit-input { display: flex; gap: 0.4rem; }
+.unit-input input { flex: 1 1 5rem; min-width: 4rem; }
+.unit-input select { flex: 0 0 7.5rem; }
+.chips { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.15rem; }
+.chip {
+  font: inherit; font-size: 0.78rem; font-weight: 600;
+  padding: 0.2rem 0.6rem; border-radius: 999px;
+  border: 1px solid var(--line-strong); background: transparent; color: var(--muted); cursor: pointer;
+}
+.chip:hover { color: var(--ink); border-color: #3d5180; }
+.chip[aria-pressed='true'] { color: #071021; background: var(--accent-grad); border-color: transparent; }
+.schedule-note {
+  flex-basis: 100%;
+  font-size: 0.875rem; color: var(--muted);
+  padding: 0.7rem 0.9rem; border-radius: var(--radius-sm);
+  background: rgba(124, 140, 255, 0.07); border: 1px solid rgba(124, 140, 255, 0.25);
+}
+.schedule-note b { color: var(--ink); }
+.schedule-warn { background: var(--warn-bg); border-color: rgba(251, 191, 36, 0.35); color: var(--warn-text); }
+
+.segmented {display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1.1rem; padding: 0.3rem; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; width: fit-content; max-width: 100%; }
 .seg {
   font: inherit;
   font-size: 0.875rem;

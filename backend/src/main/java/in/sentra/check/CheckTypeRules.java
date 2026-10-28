@@ -2,6 +2,7 @@ package in.sentra.check;
 
 import in.sentra.probe.CheckType;
 import in.sentra.probe.CronProbe;
+import in.sentra.probe.DomainProbe;
 import in.sentra.probe.TlsProbe;
 import org.springframework.stereotype.Component;
 
@@ -22,7 +23,10 @@ public class CheckTypeRules {
     private static final Pattern HTTP_URL = Pattern.compile("^https?://.+", Pattern.CASE_INSENSITIVE);
     private static final Pattern HOST = Pattern.compile("^[A-Za-z0-9]([A-Za-z0-9.:-]{0,251}[A-Za-z0-9])?$");
 
-    static final int CRON_CHECK_INTERVAL_SECONDS = 30;
+    // Letters, digits and hyphens per label, at least two labels, an alphabetic TLD (or xn-- IDN).
+    private static final Pattern DOMAIN_NAME = Pattern.compile(
+            "^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+([a-z]{2,63}|xn--[a-z0-9-]{1,59})$");
+    static final int DOMAIN_MIN_INTERVAL_SECONDS = 3600;
     private static final SecureRandom RANDOM = new SecureRandom();
 
     public static final int MIN_INTERVAL_SECONDS = 10;
@@ -36,7 +40,39 @@ public class CheckTypeRules {
             case TCP -> tcp(check, r);
             case TLS -> tls(check, r);
             case CRON -> cron(check, r);
+            case DOMAIN -> domain(check, r);
         }
+    }
+
+    /**
+     * Domain expiry. The domain arrives in {@code host}; a pasted URL or a leading "www." is trimmed
+     * off, because the registry only knows the registered name. Registries rate-limit, and
+     * registration dates change over days, so it runs daily and never more often than hourly.
+     */
+    private void domain(Check check, CreateCheckRequest r) {
+        String domain = normalizeDomain(r.host());
+        if (!DOMAIN_NAME.matcher(domain).matches()) {
+            throw new InvalidCheckException("host: must be a registered domain name such as example.com");
+        }
+        if (r.intervalSeconds() != null && r.intervalSeconds() < DOMAIN_MIN_INTERVAL_SECONDS) {
+            throw new InvalidCheckException("intervalSeconds: a domain check runs at most once an hour");
+        }
+        Map<String, Object> config = new HashMap<>();
+        config.put("domain", domain);
+        config.put("warnDays", r.warnDays() != null ? r.warnDays() : DomainProbe.DEFAULT_WARN_DAYS);
+        check.setConfig(config);
+        check.setTarget("domain://" + domain);
+        check.setSite(blankToNull(r.site()) != null ? r.site().trim() : domain);
+        common(check, r, 86400, 10000, 1, 1);
+    }
+
+    static String normalizeDomain(String input) {
+        String d = input == null ? "" : input.trim().toLowerCase();
+        d = d.replaceFirst("^[a-z][a-z0-9+.-]*://", ""); // scheme
+        d = d.replaceFirst("[/?#].*$", "");              // path, query, fragment
+        d = d.replaceFirst(":\\d+$", "");                // port
+        d = d.replaceFirst("\\.$", "");                  // trailing dot
+        return d.startsWith("www.") ? d.substring(4) : d;
     }
 
     private void http(Check check, CreateCheckRequest r) {
@@ -84,13 +120,14 @@ public class CheckTypeRules {
         }
         Map<String, Object> config = new HashMap<>();
         config.put("periodSeconds", r.periodSeconds());
-        config.put("graceSeconds", r.graceSeconds() != null ? r.graceSeconds() : CronProbe.DEFAULT_GRACE_SECONDS);
+        config.put("graceSeconds", r.graceSeconds() != null ? r.graceSeconds() : CronProbe.defaultGrace(r.periodSeconds()));
         check.setConfig(config);
         check.setPingToken(newPingToken());
         check.setTarget("cron://" + check.getName());
         check.setSite(blankToNull(r.site()) != null ? r.site().trim() : "Scheduled jobs");
-        // The probe only reads the stored ping time, so it runs often and cheaply.
-        common(check, r, CRON_CHECK_INTERVAL_SECONDS, 5000, 1, 1);
+        // The interval is informational: CronProbe.nextRunAt schedules the next evaluation at the
+        // ping deadline (and a ping triggers one right away), not on a fixed timer.
+        common(check, r, r.periodSeconds(), 5000, 1, 1);
     }
 
     private static String newPingToken() {
