@@ -22,8 +22,8 @@ Java 21 · Spring Boot 4.1 · PostgreSQL 16 · React + Vite
    ```
    The `dev` profile supplies a throwaway JWT secret. Without it the app refuses to start unless
    `JWT_SECRET` is set (at least 32 bytes).
-3. Check it's alive: `curl http://localhost:8080/api/v1/ping` → `{"status":"ok"}`
-4. Run the web UI (needs Node 18+; Vite forwards `/api` to the backend on 8080, so no CORS setup):
+3. Check it's alive: `curl http://localhost:8081/api/v1/ping` → `{"status":"ok"}`
+4. Run the web UI (needs Node 18+; Vite forwards `/api` to the backend on 8081, so no CORS setup):
    ```
    cd frontend
    npm install
@@ -39,7 +39,7 @@ Java 21 · Spring Boot 4.1 · PostgreSQL 16 · React + Vite
 | `DB_URL` | `jdbc:postgresql://localhost:55432/sentra` | Postgres JDBC URL |
 | `DB_USER` | `sentra` | Postgres user |
 | `DB_PASSWORD` | `devpass` | Postgres password |
-| `PORT` | `8080` | HTTP port |
+| `PORT` | `8081` | HTTP port |
 | `JWT_SECRET` | none (required; `dev` profile supplies a placeholder) | JWT signing secret, at least 32 bytes |
 | `SSRF_ALLOW_PRIVATE` | `false` | Local demos only: lets checks/webhooks target localhost/private IPs |
 | `JWT_EXPIRY_MINUTES` | `60` | Access token lifetime |
