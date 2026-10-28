@@ -24,7 +24,7 @@ import java.time.Instant;
  * the time (the probe turns it into a run on its next tick); a failure ping opens the incident
  * right away rather than waiting for that tick.
  */
-@RestController
+@RestController("heartbeatPingController") // common.PingController already takes the default bean name
 @RequestMapping("/ping")
 public class PingController {
 

@@ -7,7 +7,9 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': 'http://localhost:8080',
+      '/api': 'http://localhost:8081',
+      // Heartbeat pings, so the ping URL shown in the UI works from this origin too.
+      '/ping': 'http://localhost:8081',
     },
   },
 });

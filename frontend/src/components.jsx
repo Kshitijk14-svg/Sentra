@@ -38,6 +38,22 @@ export function StateBadge({ state }) {
   );
 }
 
+export function TypeTag({ type }) {
+  return <span className={`type-tag type-${type}`}>{type}</span>;
+}
+
+/** The pulse-line logo on a gradient tile, shared by the top bar and the sign-in page. */
+export function BrandMark({ size = 30 }) {
+  return (
+    <span className="brand-mark" style={{ width: size, height: size }} aria-hidden="true">
+      <svg width={size * 0.7} height={size * 0.7} viewBox="0 0 32 32">
+        <path d="M3 18h6l3-9 5 15 3-9h9" fill="none" stroke="#071021" strokeWidth="3"
+          strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
+  );
+}
+
 export function ErrorNote({ error }) {
   if (!error) return null;
   return (

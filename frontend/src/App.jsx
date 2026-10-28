@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { clearToken, emailFromToken, getToken, setToken } from './api.js';
+import { BrandMark } from './components.jsx';
 import Login from './pages/Login.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import CheckDetail from './pages/CheckDetail.jsx';
@@ -40,15 +41,13 @@ export default function App() {
     <div className="shell">
       <header className="topbar">
         <Link to="/" className="brand">
-          <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true">
-            <rect width="32" height="32" rx="6" fill="currentColor" />
-            <path d="M6 20h4l3-9 4 14 3-9h6" fill="none" stroke="#38C9A0" strokeWidth="2.5"
-              strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <BrandMark />
           Sentra
+          <span className="brand-tag">Monitoring</span>
         </Link>
         <div className="topbar-user">
           <span className="muted">{emailFromToken(token)}</span>
+          <span className="avatar" aria-hidden="true">{emailFromToken(token).charAt(0) || '?'}</span>
           <button className="btn btn-quiet" onClick={signOut}>Sign out</button>
         </div>
       </header>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api.js';
-import { ErrorNote } from '../components.jsx';
+import { BrandMark, ErrorNote } from '../components.jsx';
 
 // A fixed pattern for the decorative tape: mostly steady, with two failures and a slow patch.
 const DEMO = Array.from({ length: 64 }, (_, i) => {
@@ -33,7 +33,7 @@ export default function Login({ onSignIn }) {
   return (
     <div className="auth">
       <section className="auth-story">
-        <div className="auth-brand">Sentra</div>
+        <div className="auth-brand"><BrandMark size={34} /> Sentra</div>
         <div>
           <div className="demo-tape" aria-hidden="true">
             {DEMO.map((b, i) => (
@@ -41,18 +41,28 @@ export default function Login({ onSignIn }) {
                 style={{ height: `${b.h}%`, '--i': i }} />
             ))}
           </div>
-          <h1 className="auth-title">Every check leaves a mark. Failures stand out.</h1>
+          <h1 className="auth-title">Know the moment something breaks.</h1>
           <p className="auth-copy">
-            Sentra checks your URLs on a schedule and keeps the history. An incident opens only after
-            three failures in a row, so one bad response doesn’t page anyone, and it closes after two
-            clean runs.
+            Sentra watches your websites, ports, certificates and scheduled jobs around the clock. An
+            incident opens only after repeated failures, so one bad response doesn’t page anyone, and it
+            closes on its own once things recover.
           </p>
+          <div className="auth-points">
+            <span>HTTP uptime</span>
+            <span>TCP ports</span>
+            <span>TLS certificates</span>
+            <span>Cron jobs</span>
+            <span>Webhook alerts</span>
+          </div>
         </div>
       </section>
 
       <section className="auth-form-wrap">
         <form className="auth-form" onSubmit={submit}>
-          <h2>{registering ? 'Create your account' : 'Sign in'}</h2>
+          <div>
+            <h2>{registering ? 'Create your account' : 'Welcome back'}</h2>
+            <p className="muted small">{registering ? 'Start monitoring in under a minute.' : 'Sign in to your dashboard.'}</p>
+          </div>
           <label className="field">
             <span>Email</span>
             <input type="email" autoComplete="email" required value={email}
