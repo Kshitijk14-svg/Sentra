@@ -71,6 +71,20 @@ public class Check {
     @Column(name = "next_run_at")
     private Instant nextRunAt = Instant.now();
 
+    /** Secret in the public ping URL; set for CRON checks only. */
+    @Column(name = "ping_token")
+    private String pingToken;
+
+    @Column(name = "last_ping_at")
+    private Instant lastPingAt;
+
+    /** SUCCESS or FAIL, as reported by the last ping. */
+    @Column(name = "last_ping_status")
+    private String lastPingStatus;
+
+    @Column(name = "last_start_at")
+    private Instant lastStartAt;
+
     @Column(name = "created_at", insertable = false, updatable = false)
     private Instant createdAt;
 }

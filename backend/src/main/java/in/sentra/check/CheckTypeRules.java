@@ -1,10 +1,13 @@
 package in.sentra.check;
 
 import in.sentra.probe.CheckType;
+import in.sentra.probe.CronProbe;
 import in.sentra.probe.TlsProbe;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
+import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -19,6 +22,9 @@ public class CheckTypeRules {
     private static final Pattern HTTP_URL = Pattern.compile("^https?://.+", Pattern.CASE_INSENSITIVE);
     private static final Pattern HOST = Pattern.compile("^[A-Za-z0-9]([A-Za-z0-9.:-]{0,251}[A-Za-z0-9])?$");
 
+    static final int CRON_CHECK_INTERVAL_SECONDS = 30;
+    private static final SecureRandom RANDOM = new SecureRandom();
+
     public static final int MIN_INTERVAL_SECONDS = 10;
 
     public void apply(Check check, CreateCheckRequest r) {
@@ -29,6 +35,7 @@ public class CheckTypeRules {
             case HTTP -> http(check, r);
             case TCP -> tcp(check, r);
             case TLS -> tls(check, r);
+            case CRON -> cron(check, r);
         }
     }
 
@@ -69,6 +76,27 @@ public class CheckTypeRules {
         check.setSite(blankToNull(r.site()) != null ? r.site().trim() : host);
         // Certificates change over days, so a slower default cadence is enough.
         common(check, r, 3600, 10000, 1, 1);
+    }
+
+    private void cron(Check check, CreateCheckRequest r) {
+        if (r.periodSeconds() == null) {
+            throw new InvalidCheckException("periodSeconds: required for a CRON check");
+        }
+        Map<String, Object> config = new HashMap<>();
+        config.put("periodSeconds", r.periodSeconds());
+        config.put("graceSeconds", r.graceSeconds() != null ? r.graceSeconds() : CronProbe.DEFAULT_GRACE_SECONDS);
+        check.setConfig(config);
+        check.setPingToken(newPingToken());
+        check.setTarget("cron://" + check.getName());
+        check.setSite(blankToNull(r.site()) != null ? r.site().trim() : "Scheduled jobs");
+        // The probe only reads the stored ping time, so it runs often and cheaply.
+        common(check, r, CRON_CHECK_INTERVAL_SECONDS, 5000, 1, 1);
+    }
+
+    private static String newPingToken() {
+        byte[] bytes = new byte[24];
+        RANDOM.nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
     private static String validHost(CreateCheckRequest r) {

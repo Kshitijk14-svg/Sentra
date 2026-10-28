@@ -29,6 +29,8 @@ public interface CheckRepository extends JpaRepository<Check, Long> {
     @Query("SELECT c FROM Check c WHERE c.id = :id")
     Optional<Check> findByIdForUpdate(@Param("id") Long id);
 
+    Optional<Check> findByPingToken(String pingToken);
+
     @Query(value = """
             SELECT * FROM checks
             WHERE enabled AND next_run_at <= :now

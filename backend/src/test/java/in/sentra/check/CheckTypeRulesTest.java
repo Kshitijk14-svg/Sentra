@@ -11,11 +11,11 @@ class CheckTypeRulesTest {
     private final CheckTypeRules rules = new CheckTypeRules();
 
     private static CreateCheckRequest http(String target, Integer interval) {
-        return new CreateCheckRequest(null, "  Site  ", null, target, null, null, interval, null, null, null, null, null);
+        return new CreateCheckRequest(null, "  Site  ", null, target, null, null, interval, null, null, null, null, null, null, null);
     }
 
     private static CreateCheckRequest tcp(String host, Integer port) {
-        return new CreateCheckRequest(CheckType.TCP, "Redis", null, null, null, null, null, null, null, host, port, null);
+        return new CreateCheckRequest(CheckType.TCP, "Redis", null, null, null, null, null, null, null, host, port, null, null, null);
     }
 
     @Test
@@ -70,7 +70,7 @@ class CheckTypeRulesTest {
     void explicitSiteOverridesTheDerivedOne() {
         Check c = new Check();
         rules.apply(c, new CreateCheckRequest(CheckType.TCP, "Cache", "Shop backend", null, null, null, null,
-                null, null, "10.0.0.5", 6379, null));
+                null, null, "10.0.0.5", 6379, null, null, null));
         assertThat(c.getSite()).isEqualTo("Shop backend");
     }
 
@@ -78,7 +78,7 @@ class CheckTypeRulesTest {
     void tlsDefaultsToPort443HourlyAndAFourteenDayWarning() {
         Check c = new Check();
         rules.apply(c, new CreateCheckRequest(CheckType.TLS, "Cert", null, null, null, null, null,
-                null, null, "example.com", null, null));
+                null, null, "example.com", null, null, null, null));
         assertThat(c.getTarget()).isEqualTo("tls://example.com:443");
         assertThat(c.getConfig()).containsEntry("port", 443).containsEntry("warnDays", 14);
         assertThat(c.getIntervalSeconds()).isEqualTo(3600);
@@ -89,7 +89,38 @@ class CheckTypeRulesTest {
     @Test
     void tlsRequiresAValidHost() {
         assertThatThrownBy(() -> rules.apply(new Check(), new CreateCheckRequest(CheckType.TLS, "Cert", null, null,
-                null, null, null, null, null, "not a host!", null, null)))
+                null, null, null, null, null, "not a host!", null, null, null, null)))
                 .isInstanceOf(InvalidCheckException.class).hasMessageContaining("host");
+    }
+
+    private static CreateCheckRequest cron(Integer period, Integer grace) {
+        return new CreateCheckRequest(CheckType.CRON, "Nightly backup", null, null, null, null, null, null, null,
+                null, null, null, period, grace);
+    }
+
+    @Test
+    void cronGetsATokenGraceDefaultAndAFrequentProbe() {
+        Check c = new Check();
+        rules.apply(c, cron(86400, null));
+        assertThat(c.getPingToken()).hasSize(32);
+        assertThat(c.getConfig()).containsEntry("periodSeconds", 86400).containsEntry("graceSeconds", 300);
+        assertThat(c.getIntervalSeconds()).isEqualTo(30);
+        assertThat(c.getFailureThreshold()).isEqualTo(1);
+        assertThat(c.getSite()).isEqualTo("Scheduled jobs");
+    }
+
+    @Test
+    void cronTokensAreUnique() {
+        Check a = new Check();
+        Check b = new Check();
+        rules.apply(a, cron(60, 0));
+        rules.apply(b, cron(60, 0));
+        assertThat(a.getPingToken()).isNotEqualTo(b.getPingToken());
+    }
+
+    @Test
+    void cronRequiresAPeriod() {
+        assertThatThrownBy(() -> rules.apply(new Check(), cron(null, null)))
+                .isInstanceOf(InvalidCheckException.class).hasMessageContaining("periodSeconds");
     }
 }

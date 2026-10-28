@@ -51,6 +51,9 @@ public class CheckService {
 
     /** Rejects internal targets at creation; each probe re-checks right before it connects. */
     private void guardTarget(Check check) {
+        if (check.getType() == CheckType.CRON) {
+            return; // nothing outbound: the job calls us
+        }
         if (check.getType() == CheckType.HTTP) {
             ssrfGuard.validate(check.getTarget());
         } else {

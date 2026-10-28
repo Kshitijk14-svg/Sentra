@@ -22,5 +22,7 @@ public record CreateCheckRequest(
         @Min(1) @Max(20) Integer recoveryThreshold,
         @Size(max = 253) String host,
         @Min(1) @Max(65535) Integer port,
-        @Min(1) @Max(365) Integer warnDays) {
+        @Min(1) @Max(365) Integer warnDays,
+        @Min(10) @Max(31_536_000) Integer periodSeconds,
+        @Min(0) @Max(604_800) Integer graceSeconds) {
 }

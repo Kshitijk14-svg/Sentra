@@ -12,13 +12,15 @@ public record CheckResponse(
         Long id, String name, CheckType type, String site, String target, CheckState state, boolean enabled,
         int intervalSeconds, int timeoutMs, int expectedStatus, int failureThreshold, int recoveryThreshold,
         int consecutiveFailures, int consecutiveSuccesses, Instant nextRunAt, Instant createdAt,
-        Map<String, Object> config) {
+        Map<String, Object> config,
+        String pingToken, Instant lastPingAt, String lastPingStatus, Instant lastStartAt) {
 
     public static CheckResponse from(Check c) {
         return new CheckResponse(c.getId(), c.getName(), c.getType(), c.getSite(), c.getTarget(), c.getState(),
                 c.isEnabled(), c.getIntervalSeconds(), c.getTimeoutMs(), c.getExpectedStatus(),
                 c.getFailureThreshold(), c.getRecoveryThreshold(), c.getConsecutiveFailures(),
-                c.getConsecutiveSuccesses(), c.getNextRunAt(), c.getCreatedAt(), publicConfig(c.getConfig()));
+                c.getConsecutiveSuccesses(), c.getNextRunAt(), c.getCreatedAt(), publicConfig(c.getConfig()),
+                c.getPingToken(), c.getLastPingAt(), c.getLastPingStatus(), c.getLastStartAt());
     }
 
     /** Config minus secrets: by convention every secret key ends in "Enc" (encrypted at rest). */
